@@ -7,7 +7,7 @@ data class AddWordInteractionMessage(
         private val token: String,
         @SerializedName("action_ts") private val actionTs: String,
         private val team: Team,
-        private val user: User,
+        val user: User,
         private val channel: Channel,
         val submission: AddWordSubmission,
         @SerializedName("callback_id") private val callbackId: String,

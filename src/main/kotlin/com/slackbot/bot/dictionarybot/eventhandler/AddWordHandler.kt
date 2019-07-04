@@ -46,9 +46,9 @@ class AddWordHandler @Autowired constructor(
         return TextResponse("Deleting...")
     }
 
-    fun handleSubmission(submission: AddWordSubmission, responseUrl: String): String {
+    fun handleSubmission(submission: AddWordSubmission, responseUrl: String, creator: User): String {
         GlobalScope.launch {
-            handleAddWordSubmission(submission, responseUrl)
+            handleAddWordSubmission(submission, responseUrl, creator)
         }
 
         return ""
@@ -122,6 +122,16 @@ class AddWordHandler @Autowired constructor(
         )
     }
 
+    private fun postNewDefinitionMessage(word: String, user: User) {
+        val requestBody = NewDefinitionAddedMessage()
+                .build(word, user)
+
+        api.publishMessage(
+                gson.toJson(requestBody),
+                System.getenv(BOT_CHANNEL_WEBHOOK_ENV_VARIABLE)
+        )
+    }
+
     @Transactional
     private suspend fun removeDefinition(request: SlashCommandRequestParams) {
         val text = request.text?.toLowerCase()
@@ -143,7 +153,7 @@ class AddWordHandler @Autowired constructor(
         }
     }
 
-    private suspend fun handleAddWordSubmission(submission: AddWordSubmission, responseUrl: String) {
+    private suspend fun handleAddWordSubmission(submission: AddWordSubmission, responseUrl: String, creator: User) {
         logger.info("Submission received: $submission")
 
         logger.info("Inserting definition for ${submission.word} into the database")
@@ -152,6 +162,7 @@ class AddWordHandler @Autowired constructor(
         val wordEntity = getOrCreateDefinition(submission, word)
 
         wordDefinitionRepository.save(wordEntity)
+        postNewDefinitionMessage(word, creator)
         logger.info("Insertion finished")
 
         api.sendResponse(
@@ -202,6 +213,8 @@ class AddWordHandler @Autowired constructor(
         const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_ATTACHMENT_TYPE = "default"
         const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_COLOR = "#3AA3E3"
         const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_TYPE = "button"
+
+        const val NEW_WORD_INTERACTIVE_MESSAGE_TEXT = "Definition for `%s` was added by %s"
     }
 }
 
@@ -259,5 +272,13 @@ private class AddWordInteractionMessageBuilder {
                             )
                     )
             )
+    )
+}
+
+private class NewDefinitionAddedMessage {
+
+    fun build(word: String, user: User) = AddWordInteractiveMessageButton(
+            text = AddWordHandler.NEW_WORD_INTERACTIVE_MESSAGE_TEXT.format(word, user.name),
+            attachments = arrayOf()
     )
 }

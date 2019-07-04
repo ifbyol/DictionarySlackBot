@@ -59,7 +59,8 @@ class EventsController @Autowired constructor(
     private fun handleDialogSubmissionEvent(event: AddWordInteractionMessage) =
             addWordHandler.handleSubmission(
                     event.submission,
-                    event.responseUrl
+                    event.responseUrl,
+                    event.user
             )
 
     private fun buildSuccessResponse(response: String) = ResponseEntity.ok(response)
