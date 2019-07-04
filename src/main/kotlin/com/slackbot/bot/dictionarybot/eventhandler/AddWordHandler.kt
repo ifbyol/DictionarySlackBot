@@ -1,8 +1,7 @@
 package com.slackbot.bot.dictionarybot.eventhandler
 
-import com.slackbot.bot.dictionarybot.model.SlashCommandRequestParams
-import com.slackbot.bot.dictionarybot.model.AddWordSubmission
-import com.slackbot.bot.dictionarybot.model.TextResponse
+import com.google.gson.Gson
+import com.slackbot.bot.dictionarybot.model.*
 import com.slackbot.bot.dictionarybot.persistence.WordDefinitionEntity
 import com.slackbot.bot.dictionarybot.persistence.WordDefinitionRepository
 import com.slackbot.bot.dictionarybot.thirdparties.SlackApi
@@ -19,7 +18,8 @@ import javax.transaction.Transactional
 class AddWordHandler @Autowired constructor(
         private val api: SlackApi,
         private val logger: Logger = LoggerFactory.getLogger(AddWordHandler::class.java),
-        private val wordDefinitionRepository: WordDefinitionRepository
+        private val wordDefinitionRepository: WordDefinitionRepository,
+        private val gson: Gson
 ) {
 
     fun addWord(request: SlashCommandRequestParams): TextResponse {
@@ -84,9 +84,11 @@ class AddWordHandler @Autowired constructor(
             if (definition == null) {
                 logger.info("Definition not found for word: `$text`")
                 api.sendResponse(
-                        TextResponse("Definition not found for word: `$text`"),
+                        TextResponse("Definition not found for word: `$text`. Asking in channel ${System.getenv(BOT_CHANNEL_ENV_VARIABLE)}"),
                         request.response_url
                 )
+
+                postAddWordMessage(text)
             } else {
                 api.sendResponse(
                         TextResponse(
@@ -100,6 +102,16 @@ class AddWordHandler @Autowired constructor(
                 )
             }
         }
+    }
+
+    private fun postAddWordMessage(word: String) {
+        val requestBody = AddWordInteractionMessageBuilder()
+                .build(word)
+
+        api.publishMessage(
+                gson.toJson(requestBody),
+                System.getenv(BOT_CHANNEL_WEBHOOK_ENV_VARIABLE)
+        )
     }
 
     @Transactional
@@ -172,6 +184,16 @@ class AddWordHandler @Autowired constructor(
         const val WORD_EXAMPLE_NAME = "WordExample"
         const val WORD_EXAMPLE_TYPE = "textarea"
         const val WORD_EXAMPLE_PLACEHOLDER = "Your main KPI will be to increase our sales a 20%"
+
+        const val BOT_CHANNEL_ENV_VARIABLE = "BOT_CHANNEL"
+        const val BOT_CHANNEL_WEBHOOK_ENV_VARIABLE = "BOT_CHANNEL_WEBHOOK_URL"
+
+        const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_TEXT = "Someone has searched `{0}` but I don't have in my knowledge base"
+        const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_QUESTION = "Do you want to add a definition?"
+        const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_FALLBACK = "Unable to save definition"
+        const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_ATTACHMENT_TYPE = "default"
+        const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_COLOR = "#3AA3E3"
+        const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_TYPE = "button"
     }
 }
 
@@ -201,6 +223,30 @@ private class DialogOpenRequestBuilder {
                                     name = AddWordHandler.WORD_EXAMPLE_NAME,
                                     type = AddWordHandler.WORD_EXAMPLE_TYPE,
                                     placeholder = AddWordHandler.WORD_EXAMPLE_PLACEHOLDER
+                            )
+                    )
+            )
+    )
+}
+
+private class AddWordInteractionMessageBuilder {
+
+    fun build(word: String) = AddWordInteractiveMessageButton(
+            text = AddWordHandler.ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_TEXT.format(word),
+            attachments = arrayOf(
+                    Attachment(
+                            text = AddWordHandler.ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_QUESTION,
+                            fallback = AddWordHandler.ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_FALLBACK,
+                            callbackId = word,
+                            attachmentType = AddWordHandler.ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_ATTACHMENT_TYPE,
+                            color = AddWordHandler.ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_COLOR,
+                            actions = arrayOf(
+                                    Action(
+                                            name = AddWordHandler.NEW_WORD_LABEL,
+                                            text = AddWordHandler.DIALOG_TITLE,
+                                            type = AddWordHandler.ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_TYPE,
+                                            value = ""
+                                    )
                             )
                     )
             )
