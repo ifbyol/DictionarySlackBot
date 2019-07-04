@@ -328,6 +328,7 @@ private class RemovedDefinitionMessage {
     fun build(word: String, user: User) = AddWordInteractiveMessageButton(
             text = AddWordHandler.REMOVED_WORD_INTERACTIVE_MESSAGE_TEXT.format(word, user.name),
             attachments = arrayOf()
+    )
 }
       
 private class DirectMessageBuilder {
