@@ -15,5 +15,5 @@ data class SlashCommandRequestParams(
         val response_url: String,
         val trigger_id: String
 ) {
-    fun getUser(): User = User(user_id?:"unknown_user_id", user_name?:"unknown_user_name")
+    fun getUser(): User = User(user_id, user_name)
 }
