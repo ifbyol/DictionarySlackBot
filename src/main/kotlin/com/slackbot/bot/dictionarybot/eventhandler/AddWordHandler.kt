@@ -132,6 +132,16 @@ class AddWordHandler @Autowired constructor(
         )
     }
 
+    private fun postRemovedDefinitionMessage(word: String, user: User) {
+        val requestBody = RemovedDefinitionMessage()
+                .build(word, user)
+
+        api.publishMessage(
+                gson.toJson(requestBody),
+                System.getenv(BOT_CHANNEL_WEBHOOK_ENV_VARIABLE)
+        )
+    }
+
     @Transactional
     private suspend fun removeDefinition(request: SlashCommandRequestParams) {
         val text = request.text?.toLowerCase()
@@ -144,6 +154,7 @@ class AddWordHandler @Autowired constructor(
             )
         } else {
             wordDefinitionRepository.deleteByWord(text)
+            postRemovedDefinitionMessage(text, request.getUser())
             logger.info("Definition for word `$text` was successfully deleted")
 
             api.sendResponse(
@@ -215,6 +226,7 @@ class AddWordHandler @Autowired constructor(
         const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_TYPE = "button"
 
         const val NEW_WORD_INTERACTIVE_MESSAGE_TEXT = "Definition for `%s` was added by %s"
+        const val REMOVED_WORD_INTERACTIVE_MESSAGE_TEXT = "Definition for `%s` was removed by %s"
     }
 }
 
@@ -279,6 +291,14 @@ private class NewDefinitionAddedMessage {
 
     fun build(word: String, user: User) = AddWordInteractiveMessageButton(
             text = AddWordHandler.NEW_WORD_INTERACTIVE_MESSAGE_TEXT.format(word, user.name),
+            attachments = arrayOf()
+    )
+}
+
+private class RemovedDefinitionMessage {
+
+    fun build(word: String, user: User) = AddWordInteractiveMessageButton(
+            text = AddWordHandler.REMOVED_WORD_INTERACTIVE_MESSAGE_TEXT.format(word, user.name),
             attachments = arrayOf()
     )
 }
