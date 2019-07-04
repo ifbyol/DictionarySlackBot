@@ -2,6 +2,8 @@ package com.slackbot.bot.dictionarybot.eventhandler
 
 import com.google.gson.Gson
 import com.slackbot.bot.dictionarybot.model.*
+import com.slackbot.bot.dictionarybot.persistence.UnsuccessfulSearchHistory
+import com.slackbot.bot.dictionarybot.persistence.UnsuccessfulSearchHistoryRepository
 import com.slackbot.bot.dictionarybot.persistence.WordDefinitionEntity
 import com.slackbot.bot.dictionarybot.persistence.WordDefinitionRepository
 import com.slackbot.bot.dictionarybot.thirdparties.SlackApi
@@ -19,6 +21,7 @@ class AddWordHandler @Autowired constructor(
         private val api: SlackApi,
         private val logger: Logger = LoggerFactory.getLogger(AddWordHandler::class.java),
         private val wordDefinitionRepository: WordDefinitionRepository,
+        private val unsuccessfullSearchHistoryRepository: UnsuccessfulSearchHistoryRepository,
         private val gson: Gson
 ) {
 
@@ -96,6 +99,7 @@ class AddWordHandler @Autowired constructor(
                         request.response_url
                 )
 
+                addUnsuccessfulSearchHistory(text, request.user_name, request.user_id)
                 postAddWordMessage(text)
             } else {
                 api.sendResponse(
@@ -112,6 +116,16 @@ class AddWordHandler @Autowired constructor(
         }
     }
 
+    private fun addUnsuccessfulSearchHistory(text: String, username: String, userId: String) {
+        unsuccessfullSearchHistoryRepository.save(
+                UnsuccessfulSearchHistory(
+                        word = text,
+                        user = username,
+                        userId = userId
+                )
+        )
+    }
+
     private fun postAddWordMessage(word: String) {
         val requestBody = AddWordInteractionMessageBuilder()
                 .build(word)
@@ -123,7 +137,7 @@ class AddWordHandler @Autowired constructor(
     }
 
     private fun postNewDefinitionMessage(word: String, user: User) {
-        val requestBody = NewDefinitionAddedMessage()
+        val requestBody = NewDefinitionAddedMessageBuilder()
                 .build(word, user)
 
         api.publishMessage(
@@ -174,12 +188,26 @@ class AddWordHandler @Autowired constructor(
 
         wordDefinitionRepository.save(wordEntity)
         postNewDefinitionMessage(word, creator)
+        notifyToInterestedUsers(word, creator)
         logger.info("Insertion finished")
 
         api.sendResponse(
                 TextResponse("Definition saved correctly!"),
                 responseUrl
         )
+    }
+
+    private fun notifyToInterestedUsers(word: String, creator: User) {
+        val interestedUsers = unsuccessfullSearchHistoryRepository.findAllByWord(word)
+                .map {
+                    User(it.userId, it.user)
+                }
+
+        interestedUsers.forEach {
+            val message = DirectMessageBuilder().build(word, creator, it.id)
+            api.sendDirectMessage(gson.toJson(message))
+            unsuccessfullSearchHistoryRepository.deleteByWord(word)
+        }
     }
 
     private fun getOrCreateDefinition(submission: AddWordSubmission, word: String) =
@@ -287,8 +315,8 @@ private class AddWordInteractionMessageBuilder {
     )
 }
 
-private class NewDefinitionAddedMessage {
-
+private class NewDefinitionAddedMessageBuilder {
+  
     fun build(word: String, user: User) = AddWordInteractiveMessageButton(
             text = AddWordHandler.NEW_WORD_INTERACTIVE_MESSAGE_TEXT.format(word, user.name),
             attachments = arrayOf()
@@ -296,9 +324,16 @@ private class NewDefinitionAddedMessage {
 }
 
 private class RemovedDefinitionMessage {
-
+  
     fun build(word: String, user: User) = AddWordInteractiveMessageButton(
             text = AddWordHandler.REMOVED_WORD_INTERACTIVE_MESSAGE_TEXT.format(word, user.name),
             attachments = arrayOf()
+}
+      
+private class DirectMessageBuilder {
+  
+    fun build(word: String, creator: User, interestedUserId: String) = DirectMessage(
+            text = AddWordHandler.NEW_WORD_INTERACTIVE_MESSAGE_TEXT.format(word, creator.name),
+            channel = interestedUserId
     )
 }
