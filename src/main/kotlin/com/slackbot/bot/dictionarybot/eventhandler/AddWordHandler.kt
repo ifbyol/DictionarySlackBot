@@ -24,7 +24,7 @@ class AddWordHandler @Autowired constructor(
 
     fun addWord(request: SlashCommandRequestParams): TextResponse {
         GlobalScope.launch {
-            openDialog(request)
+            openDialog(request.trigger_id)
         }
 
         return TextResponse("Your request is being processing")
@@ -54,12 +54,20 @@ class AddWordHandler @Autowired constructor(
         return ""
     }
 
+    fun handleAddWordInteractiveMessage(triggerId: String): String {
+        GlobalScope.launch {
+            openDialog(triggerId)
+        }
+
+        return ""
+    }
+
     private fun getResponse(word: String, definition: String, example: String?) = "*$word* is " +
             "`$definition`. An example of use of the word in a sentence is: `$example`"
 
-    private suspend fun openDialog(request: SlashCommandRequestParams) {
+    private suspend fun openDialog(triggerId: String) {
         val dialogOpenRequest = DialogOpenRequestBuilder()
-                .build(request.trigger_id)
+                .build(triggerId)
 
         logger.info("DialogOpenRequest: $dialogOpenRequest")
 
@@ -84,7 +92,7 @@ class AddWordHandler @Autowired constructor(
             if (definition == null) {
                 logger.info("Definition not found for word: `$text`")
                 api.sendResponse(
-                        TextResponse("Definition not found for word: `$text`. Asking in channel ${System.getenv(BOT_CHANNEL_ENV_VARIABLE)}"),
+                        TextResponse("Definition not found for word: `$text`. Asking in channel #${System.getenv(BOT_CHANNEL_ENV_VARIABLE)}"),
                         request.response_url
                 )
 
@@ -188,7 +196,7 @@ class AddWordHandler @Autowired constructor(
         const val BOT_CHANNEL_ENV_VARIABLE = "BOT_CHANNEL"
         const val BOT_CHANNEL_WEBHOOK_ENV_VARIABLE = "BOT_CHANNEL_WEBHOOK_URL"
 
-        const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_TEXT = "Someone has searched `{0}` but I don't have in my knowledge base"
+        const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_TEXT = "Someone has searched `%s` but I don't have in my knowledge base"
         const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_QUESTION = "Do you want to add a definition?"
         const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_FALLBACK = "Unable to save definition"
         const val ADD_WORD_INTERACTIVE_MESSAGE_BUTTON_ATTACHMENT_TYPE = "default"
