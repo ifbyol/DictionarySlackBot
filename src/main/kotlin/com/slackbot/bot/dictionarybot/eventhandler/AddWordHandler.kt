@@ -54,9 +54,9 @@ class AddWordHandler @Autowired constructor(
         return ""
     }
 
-    fun handleAddWordInteractiveMessage(triggerId: String): String {
+    fun handleAddWordInteractiveMessage(triggerId: String, word: String): String {
         GlobalScope.launch {
-            openDialog(triggerId)
+            openDialog(triggerId, word)
         }
 
         return ""
@@ -65,9 +65,9 @@ class AddWordHandler @Autowired constructor(
     private fun getResponse(word: String, definition: String, example: String?) = "*$word* is " +
             "`$definition`. An example of use of the word in a sentence is: `$example`"
 
-    private suspend fun openDialog(triggerId: String) {
+    private suspend fun openDialog(triggerId: String, defaultWord: String? = null) {
         val dialogOpenRequest = DialogOpenRequestBuilder()
-                .build(triggerId)
+                .build(triggerId, defaultWord)
 
         logger.info("DialogOpenRequest: $dialogOpenRequest")
 
@@ -207,7 +207,7 @@ class AddWordHandler @Autowired constructor(
 
 private class DialogOpenRequestBuilder {
 
-    fun build(triggerId: String): DialogOpenRequest = DialogOpenRequest(
+    fun build(triggerId: String, defaultWord: String?): DialogOpenRequest = DialogOpenRequest(
             triggerId = triggerId,
             dialog = AddWordDialog(
                     title = AddWordHandler.DIALOG_TITLE,
@@ -218,7 +218,8 @@ private class DialogOpenRequestBuilder {
                                     label = AddWordHandler.NEW_WORD_LABEL,
                                     name = AddWordHandler.NEW_WORD_NAME,
                                     type = AddWordHandler.NEW_WORD_TYPE,
-                                    placeholder = AddWordHandler.NEW_WORD_PLACEHOLDER
+                                    placeholder = AddWordHandler.NEW_WORD_PLACEHOLDER,
+                                    value = defaultWord
                             ),
                             TextAreaElement(
                                     label = AddWordHandler.WORD_DEFINITION_LABEL,

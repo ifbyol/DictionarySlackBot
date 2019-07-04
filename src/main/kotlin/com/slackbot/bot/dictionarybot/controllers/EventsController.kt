@@ -48,7 +48,10 @@ class EventsController @Autowired constructor(
                     handleDialogSubmissionEvent(gson.fromJson(event, AddWordInteractionMessage::class.java))
             )
             INTERACTION_EVENT_DIALOG_CANCELLED_TYPE -> buildSuccessResponse("")
-            INTERACTIVE_MESSAGE_TYPE -> buildBadRequestResponse(addWordHandler.handleAddWordInteractiveMessage(json.getString(TRIGGER_ID_ATTRIBUTE)))
+            INTERACTIVE_MESSAGE_TYPE -> buildSuccessResponse(addWordHandler.handleAddWordInteractiveMessage(
+                    json.getString(TRIGGER_ID_ATTRIBUTE),
+                    json.getString(CALLBACK_ID))
+            )
             else -> buildBadRequestResponse("")
         }
     }
@@ -66,6 +69,7 @@ class EventsController @Autowired constructor(
     companion object {
         const val TYPE_ATTRIBUTE = "type"
         const val TRIGGER_ID_ATTRIBUTE = "trigger_id"
+        const val CALLBACK_ID = "callback_id"
         const val URL_VERIFICATION_TYPE = "url_verification"
         const val EVENT_CALLBACK_TYPE = "event_callback"
         const val INTERACTION_EVENT_DIALOG_SUBMISSION_TYPE = "dialog_submission"
