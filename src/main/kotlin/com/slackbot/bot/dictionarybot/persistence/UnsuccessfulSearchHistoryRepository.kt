@@ -10,5 +10,5 @@ interface UnsuccessfulSearchHistoryRepository: CrudRepository<UnsuccessfulSearch
     @Transactional
     fun deleteByWord(word: String)
 
-    fun existsByWord(word: String): Boolean
+    fun existsByWordAndUserId(word: String, userId: String): Boolean
 }

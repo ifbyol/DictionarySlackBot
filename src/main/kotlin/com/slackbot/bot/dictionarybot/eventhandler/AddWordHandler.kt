@@ -117,13 +117,16 @@ class AddWordHandler @Autowired constructor(
     }
 
     private fun addUnsuccessfulSearchHistory(text: String, username: String, userId: String) {
-        unsuccessfullSearchHistoryRepository.save(
-                UnsuccessfulSearchHistory(
-                        word = text,
-                        user = username,
-                        userId = userId
-                )
-        )
+
+        if (!unsuccessfullSearchHistoryRepository.existsByWordAndUserId(text, userId)) {
+            unsuccessfullSearchHistoryRepository.save(
+                    UnsuccessfulSearchHistory(
+                            word = text,
+                            user = username,
+                            userId = userId
+                    )
+            )
+        }
     }
 
     private fun postAddWordMessage(word: String) {
